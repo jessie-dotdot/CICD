@@ -1,0 +1,63 @@
+stages:
+    - build
+    - style_test
+    - tests_code_sample
+    - tests
+    - deploy
+
+build-job:
+    stage: build
+    script:
+      - cd src/C3_SimpleBashUtils/cat
+      - make
+      - cd ../grep
+      - make
+      - cd ../../../code-samples
+      - make
+    artifacts:
+      paths:
+      - src/C3_SimpleBashUtils/cat/s21_cat
+      - src/C3_SimpleBashUtils/grep/s21_grep
+      - code-samples/DO
+      expire_in: 30 days
+    after_script:
+      - bash notify.sh "build"
+styletests:
+    stage: style_test
+    script:
+      - cd src/C3_SimpleBashUtils
+      - clang-format -Werror -n $(find . -name '*.c' -o -name '*.h')
+    after_script:
+      - bash notify.sh "style_test"
+tests_code_sample:
+    stage: tests_code_sample
+    script:
+      - cd code-samples
+      - test "$(./DO 1)" = "Learning to Linux" || { echo "Test 1 failed"; exit 1; }
+      - test "$(./DO 2)" = "Learning to work with Network" || { echo "Test 2 failed"; exit 1; }
+      - test "$(./DO 3)" = "Learning to Monitoring" || { echo "Test 3 failed"; exit 1; }
+      - test "$(./DO 4)" = "Learning to extra Monitoring" || { echo "Test 4 failed"; exit 1; }
+      - test "$(./DO 5)" = "Learning to Docker" || { echo "Test 5 failed"; exit 1; }
+      - test "$(./DO 6)" = "Learning to CI/CD" || { echo "Test 6 failed"; exit 1; }
+      - test "$(./DO 0)" = "Bad number!" || { echo "Test 0 failed"; exit 1; }
+      - test "$(./DO)" = "Bad number of arguments!" || { echo "No args test failed"; exit 1; }
+      - echo "All integration tests passed!"
+    after_script:
+      - bash notify.sh "tests_code_sample"
+tests:
+    stage: tests
+    script:
+      - cd src/C3_SimpleBashUtils/cat
+      - bash run_tests.sh
+      - cd ../grep/
+      - bash test_func_grep.sh
+    after_script:
+      - bash notify.sh "tests"
+deploy-job:
+    stage: deploy
+    script:
+      - chmod +x deploy.sh
+      - bash deploy.sh
+    when: manual
+    after_script:
+      - bash notify.sh "deploy"
